@@ -1,0 +1,36 @@
+---
+- name: Prepare Windows for rdiff-backup development
+  hosts: all
+  gather_facts: false
+  tasks:
+  - name: enable running chocolatey scripts without confirmation
+    win_chocolatey_feature:
+      name: allowGlobalConfirmation
+      state: enabled
+  - name: install basis development tools via chocolatey
+    win_chocolatey:
+      name:
+      - virtio-drivers
+      - python
+      - git
+      - dotnetfx  # dependency of visualstudio, allows for reboot in-between
+      state: present
+    register: base_pkg
+  - name: execute reboot
+    win_reboot:
+    when: base_pkg.changed
+  - name: install further development tools via chocolatey (still failing)
+    win_chocolatey:
+      name:
+      - visualstudio2017buildtools # didn't work here (memory?)
+      - vscode # Visual Studio Code (editor)
+      #- visualstudio2017-workload-vctools # fails...
+      #instead run from cmd as Administrator, possibly without quiet:
+      #"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify --installPath "C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools" --includeRecommended --norestart --quiet --add Microsoft.VisualStudio.Workload.VCTools
+      state: present
+  - name: install necessary python libraries
+    win_command: pip.exe install py2exe
+    # pylibacl fails on Windows with error hinting at sole support for Linux
+    # pyxattr fails to compile with WError numeric parameter error:
+    # https://github.com/iustin/pyxattr/issues/22 (but Windows doesn't seem to be supported)
+  # TODO install / compile librsync
